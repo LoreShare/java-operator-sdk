@@ -1,11 +1,9 @@
 # WebPage Operator
 
-This is a simple example of how a Custom Resource backed by an Operator can serve as
-an abstraction layer. This Operator will use a WebPage resource, which mainly contains a
-static webpage definition and creates an NGINX Deployment backed by a ConfigMap which holds
-the HTML.
+这是一个简单的示例，演示了由 Operator 支持的自定义资源如何作为抽象层。此 Operator 将使用一个名为 WebPage 的资源，主要包含一个静态网页定义，并创建一个 NGINX 部署，该部署由一个保存 HTML 的 ConfigMap 支持。
 
-This is an example input:
+以下是一个示例输入：
+
 ```yaml
 apiVersion: "sample.javaoperatorsdk/v1"
 kind: WebPage
@@ -23,56 +21,53 @@ spec:
     </html>
 ```
 
+### 不同的实现方式
 
-### Different Flavors
+示例包含三种实现方式，展示了框架中可能的不同方法，最终的行为几乎相同：
 
-Sample contains three implementation, that are showcasing the different approaches possible with the framework,
-the resulting behavior is almost identical behavior at the end:
+- [低级API](https://github.com/java-operator-sdk/java-operator-sdk/blob/main/sample-operators/webpage/src/main/java/io/javaoperatorsdk/operator/sample/WebPageDependentsWorkflowReconciler.java)
+- [使用管理的依赖资源](https://github.com/java-operator-sdk/java-operator-sdk/blob/main/sample-operators/webpage/src/main/java/io/javaoperatorsdk/operator/sample/WebPageManagedDependentsReconciler.java)
+- [使用独立的依赖资源](https://github.com/java-operator-sdk/java-operator-sdk/blob/main/sample-operators/webpage/src/main/java/io/javaoperatorsdk/operator/sample/WebPageStandaloneDependentsReconciler.java)
 
-- [Low level API](https://github.com/java-operator-sdk/java-operator-sdk/blob/main/sample-operators/webpage/src/main/java/io/javaoperatorsdk/operator/sample/WebPageDependentsWorkflowReconciler.java)
-- [Using managed dependent resources](https://github.com/java-operator-sdk/java-operator-sdk/blob/main/sample-operators/webpage/src/main/java/io/javaoperatorsdk/operator/sample/WebPageManagedDependentsReconciler.java)
-- [Using standalone Dependent Resources](https://github.com/java-operator-sdk/java-operator-sdk/blob/main/sample-operators/webpage/src/main/java/io/javaoperatorsdk/operator/sample/WebPageStandaloneDependentsReconciler.java)
+### 尝试
 
-### Try 
+尝试该 Operator 的最快方法是在本地运行它，同时连接到本地或远程的 Kubernetes 集群。
 
-The quickest way to try the operator is to run it on your local machine, while it connects to a local or remote
-Kubernetes cluster. When you start it, it will use the current kubectl context on your machine to connect to the cluster.
+当您启动它时，它将使用您机器上当前的 kubectl 上下文连接到集群。
 
-Before you run it you have to install the CRD on your cluster by running
-`kubectl apply -f target/classes/META-INF/fabric8/webpages.sample.javaoperatorsdk-v1.yml`.
 
-The CRD is generated automatically from your code by simply adding the `crd-generator-apt`
-dependency to your `pom.xml` file.
 
-When the Operator is running you can create some Webserver Custom Resources. You can find a sample custom resource in
-`k8s/webpage.yaml`. You can create it by running `kubectl apply -f k8s/webpage.yaml`
+在运行之前，您必须通过运行以下命令将 CRD 安装到集群中： `kubectl apply -f target/classes/META-INF/fabric8/webpages.sample.javaoperatorsdk-v1.yml`。
 
-After the Operator has picked up the new webserver resource (see the logs) it should create the NGINX server in the 
-same namespace where the webserver resource is created. To connect to the server using your browser you can
-run `kubectl get service` and view the service created by the Operator. It should have a NodePort configured. If you are
-running a single-node cluster (e.g. Docker for Mac or Minikube) you can connect to the VM on this port to access the
-page. Otherwise you can change the service to a LoadBalancer (e.g on a public cloud).
+CRD 是通过简单地向 `pom.xml` 文件中添加 `crd-generator-apt` 依赖项来自动生成的。
 
-You can also try to change the HTML code in `k8s/webpage.yaml` and do another `kubectl apply -f k8s/webpage.yaml`.
-This should update the actual NGINX deployment with the new configuration.  
 
-Note that there are multiple reconciler implementations that watch `WebPage` resources differentiated by a label.
-When you create a new `WebPage` resource, make sure its label matches the active reconciler's label selector.
 
-If you want the Operator to be running as a deployment in your cluster, follow the below steps.
+当 Operator 运行时，您可以创建一些 Webserver 自定义资源。您可以在 `k8s/webpage.yaml` 中找到一个示例自定义资源。您可以通过运行 `kubectl apply -f k8s/webpage.yaml` 来创建它。
 
-### Build
 
-In order to point your docker build to minikube docker registry run:
+
+在 Operator 捕获到新的 webserver 资源后（请参阅日志），它应该会在创建 webserver 资源的同一命名空间中创建 NGINX 服务器。要使用浏览器连接到服务器，您可以运行 `kubectl get service` 并查看 Operator 创建的服务。它应该配置了一个 NodePort。如果您运行的是单节点集群（例如 Docker for Mac 或 Minikube），您可以连接到此端口上的 VM 来访问页面。否则，您可以将服务更改为 LoadBalancer（例如在公共云上）。
+
+您也可以尝试更改 `k8s/webpage.yaml` 中的 HTML 代码，然后再次运行 `kubectl apply -f k8s/webpage.yaml`。这应该会更新实际的 NGINX 部署，并应用新的配置。
+
+请注意，有多个调解器实现会观察 `WebPage` 资源，其区别在于一个标签。当您创建一个新的 `WebPage` 资源时，请确保其标签与活动调解器的标签选择器匹配。
+
+
+
+如果您希望 Operator 作为部署在集群中运行，请按以下步骤操作。
+
+### 构建
+
+为了将您的 Docker 构建指向 Minikube 的 Docker 注册表，请运行：
 
 ```
 eval $(minikube docker-env)
 ```
 
-You can build the sample using `mvn jib:dockerBuild` this will produce a Docker image you can push to the registry 
-of your choice. The JAR file is built using your local Maven and JDK and then copied into the Docker image.
+您可以使用 `mvn jib:dockerBuild` 构建示例，这将生成一个 Docker 镜像，您可以将其推送到您选择的注册表中。JAR 文件是使用您本地的 Maven 和 JDK 构建的，然后将其复制到 Docker 镜像中。
 
-### Deployment
+### 部署
 
-1. Deploy the CRD: `kubectl apply -f target/classes/META-INF/fabric8/webpages.sample.javaoperatorsdk-v1.yml`
-2. Deploy the operator: `kubectl apply -f k8s/operator.yaml`
+1. 部署 CRD: `kubectl apply -f target/classes/META-INF/fabric8/webpages.sample.javaoperatorsdk-v1.yml`
+2. 部署 operator: `kubectl apply -f k8s/operator.yaml`
